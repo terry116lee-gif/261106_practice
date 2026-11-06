@@ -1,0 +1,289 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0}.chat[hidden],[hidden]{display:none!important}</style></head><body><title>변경점 승인 현황</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+/* Layout: 요약 KPI → 변경점×고객 매트릭스(중심) → 변경점별/고객별 합산 막대 → 상세 표(필터) */
+:root{
+  --bg:#f5f6f7; --surface:#ffffff; --ink:#1b2430; --ink2:#556070; --muted:#8a94a3; --line:#e1e5ea;
+  --high:#1f7a5c; --high-bg:#dff1ea; --low:#b8452f; --low-bg:#f8e1db; --none:#8a94a3; --none-bg:#eceff2;
+  --accent:#2c5ea8;
+  --font:'Noto Sans KR',system-ui,sans-serif; --mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#12171e; --surface:#1a212b; --ink:#e8ecf1; --ink2:#a6b0be; --muted:#76818f; --line:#2b3441;
+  --high:#4cc29b; --high-bg:#17382d; --low:#f08a73; --low-bg:#43231c; --none:#76818f; --none-bg:#232b36;
+  --accent:#7fa8e6; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12171e; --surface:#1a212b; --ink:#e8ecf1; --ink2:#a6b0be; --muted:#76818f; --line:#2b3441;
+  --high:#4cc29b; --high-bg:#17382d; --low:#f08a73; --low-bg:#43231c; --none:#76818f; --none-bg:#232b36;
+  --accent:#7fa8e6; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14px;line-height:1.5;
+  padding-block:24px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+h1{font-size:22px;margin:0;font-weight:700;text-wrap:balance}
+h2{font-size:15px;margin:0;font-weight:700}
+.sub{color:var(--ink2);margin:4px 0 0}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:18px}
+.panel-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.note{color:var(--muted);font-size:12px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px 16px;min-width:0}
+.kpi .l{color:var(--ink2);font-size:12px}
+.kpi .v{font-family:var(--mono);font-size:28px;font-weight:500;margin-top:2px}
+.kpi .s{color:var(--muted);font-size:12px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink2)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.sw-high{background:var(--high)}.sw-low{background:var(--low)}.sw-none{background:var(--none-bg);border:1px dashed var(--none)}
+/* matrix */
+.scroll{overflow-x:auto}
+table.mx{border-collapse:separate;border-spacing:4px;width:100%;min-width:640px}
+.mx th{font-weight:500;font-size:12px;color:var(--ink2);text-align:center;padding:4px}
+.mx th.rowh{text-align:left;color:var(--ink);font-size:13px;font-weight:700;white-space:nowrap;padding-right:12px}
+.cell{border-radius:4px;padding:10px 8px;text-align:center;min-width:92px;height:84px;vertical-align:middle}
+.cell .st{font-weight:700;font-size:13px}
+.cell .d{font-size:11px;margin-top:2px;color:var(--ink2)}
+.cell .q{font-family:var(--mono);font-size:12px;margin-top:2px}
+.c-high{background:var(--high-bg);color:var(--high)}
+.c-low{background:var(--low-bg);color:var(--low)}
+.c-none{background:var(--none-bg);color:var(--none);background-image:repeating-linear-gradient(45deg,transparent 0 6px,rgba(128,138,152,.16) 6px 7px)}
+.tot{background:transparent;text-align:center;font-size:12px;color:var(--ink2);min-width:84px}
+.tot b{display:block;font-family:var(--mono);font-size:16px;color:var(--ink);font-weight:500}
+/* bars */
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:20px}
+.two>*{min-width:0}
+.brow{display:grid;grid-template-columns:110px 1fr 64px;gap:10px;align-items:center;padding:7px 0}
+.brow .nm{font-weight:500;font-size:13px;overflow-wrap:anywhere}
+.bar{display:flex;gap:2px;height:20px}
+.bar span{display:block;border-radius:3px;min-width:0}
+.bar .s-high{background:var(--high)}.bar .s-low{background:var(--low)}
+.bar .s-none{background:var(--none-bg);border:1px dashed var(--none)}
+.brow .pc{font-family:var(--mono);font-size:13px;text-align:right}
+.brow .meta{grid-column:2/4;color:var(--muted);font-size:11px;margin-top:-4px}
+/* table */
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+.filters .lab{font-size:12px;color:var(--ink2);margin-right:2px}
+button.chip{font:inherit;font-size:12px;border:1px solid var(--line);background:var(--surface);color:var(--ink2);border-radius:99px;padding:3px 11px;cursor:pointer}
+button.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+button.chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+table.dt{border-collapse:collapse;width:100%;min-width:720px}
+.dt th{text-align:left;font-size:12px;color:var(--ink2);font-weight:500;border-bottom:1px solid var(--line);padding:8px 10px;white-space:nowrap}
+.dt td{padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+.dt td.r,.dt th.r{text-align:right}
+.pill{display:inline-block;border-radius:99px;padding:1px 10px;font-size:12px;font-weight:500}
+.p-high{background:var(--high-bg);color:var(--high)}.p-low{background:var(--low-bg);color:var(--low)}.p-none{background:var(--none-bg);color:var(--none)}
+.na{color:var(--muted)}
+@media (max-width:480px){.brow{grid-template-columns:84px 1fr 52px}}
+/* chat */
+.layout{max-width:1560px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:20px;align-items:start}
+.layout>.wrap{max-width:none;margin:0;min-width:0}
+.chat{position:sticky;top:16px;height:calc(100vh - 32px);min-height:480px;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.chat-h{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.chat-h h2{margin:0}
+button.ghost{font:inherit;font-size:12px;background:none;border:1px solid var(--line);color:var(--ink2);border-radius:4px;padding:3px 10px;cursor:pointer}
+button.ghost:focus-visible,.send:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.cfg{padding:12px 16px;border-bottom:1px solid var(--line);display:grid;gap:8px}
+.cfg label{display:grid;gap:3px;font-size:12px;color:var(--ink2)}
+.cfg input,.ask textarea{font:inherit;font-size:13px;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:6px 8px;width:100%;box-sizing:border-box;min-width:0}
+.cfg input:focus-visible,.ask textarea:focus-visible{outline:2px solid var(--accent);outline-offset:-1px}
+.cfg .hint{font-size:11px;color:var(--muted);margin:0}
+.msgs{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.m{max-width:92%;padding:8px 11px;border-radius:6px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px}
+.m.u{align-self:flex-end;background:var(--accent);color:var(--surface)}
+.m.a{align-self:flex-start;background:var(--bg);border:1px solid var(--line)}
+.m.e{align-self:flex-start;background:var(--low-bg);color:var(--low)}
+.sugg{display:flex;gap:6px;flex-wrap:wrap}
+.ask{padding:10px 12px;border-top:1px solid var(--line);display:flex;gap:8px;align-items:flex-end}
+.ask textarea{resize:none;height:56px}
+.send{font:inherit;font-size:13px;font-weight:500;background:var(--accent);color:var(--surface);border:0;border-radius:4px;padding:8px 14px;cursor:pointer}
+.send:disabled{opacity:.5;cursor:default}
+@media (max-width:1000px){.layout{grid-template-columns:minmax(0,1fr)}.chat{position:static;height:600px}}
+</style>
+
+<div class="layout">
+<div class="wrap">
+  <header>
+    <h1>변경점 승인 현황</h1>
+    <p class="sub">변경점 3건 × 고객 5곳, 총 15개 조합의 PCN 발행과 승인 가능성을 한 화면에서 봅니다. 원본: Changeapproval.xlsx</p>
+  </header>
+
+  <section class="kpis" id="kpis" aria-label="요약"></section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>변경점 × 고객 승인 가능성</h2>
+      <div class="legend"><span><i class="sw-high"></i>높음</span><span><i class="sw-low"></i>낮음</span><span><i class="sw-none"></i>미발행</span></div>
+    </div>
+    <div class="scroll"><table class="mx" id="matrix"></table></div>
+    <p class="note" style="margin:10px 0 0">칸 안에는 PCN 형태, 최초발행일, 샘플 요청 수량을 표시합니다. 오른쪽 열은 변경점별, 아래 행은 고객별 합계입니다.</p>
+  </section>
+
+  <section class="two">
+    <div class="panel">
+      <div class="panel-head"><h2>변경점별 종합</h2><span class="note">막대 오른쪽 수치: 발행 건 중 높음 비율</span></div>
+      <div id="byChange"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>고객별 종합</h2><span class="note">막대 오른쪽 수치: 발행 건 중 높음 비율</span></div>
+      <div id="byCustomer"></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h2>상세 내역</h2><span class="note" id="count"></span></div>
+    <div class="filters" id="fChange"></div>
+    <div class="filters" id="fCust"></div>
+    <div class="scroll"><table class="dt" id="detail"></table></div>
+  </section>
+</div>
+
+<aside class="chat" aria-label="데이터 질문 챗봇">
+  <div class="chat-h"><h2>데이터에 질문하기</h2><button class="ghost" id="cfgToggle" type="button" aria-expanded="true">설정</button></div>
+  <form class="cfg" id="cfg" autocomplete="off">
+    <label>model_name<input id="cModel" type="text" placeholder="예: gpt-4o-mini"></label>
+    <label>base_url<input id="cUrl" type="text" placeholder="예: https://api.openai.com/v1"></label>
+    <label>api_key<input id="cKey" type="password" placeholder="sk-..."></label>
+    <p class="hint">OpenAI 호환 /chat/completions 형식으로 호출합니다. api_key는 이 페이지 메모리에만 있고 저장되지 않으며, 새로고침하면 지워집니다. model_name과 base_url은 이 브라우저에만 저장됩니다.</p>
+  </form>
+  <div class="msgs" id="msgs" aria-live="polite"></div>
+  <div class="ask">
+    <textarea id="q" placeholder="예: 승인 가능성이 낮은 고객은? (Enter 전송, Shift+Enter 줄바꿈)" aria-label="질문"></textarea>
+    <button class="send" id="send" type="button">전송</button>
+  </div>
+</aside>
+</div>
+
+<script>
+const RAW=[
+["A > B 공장 확산","A","발행","Full","2026-01-16","긍정","요청","7.0k","높음"],
+["A > B 공장 확산","B","미발행",null,null,null,null,null,null],
+["A > B 공장 확산","C","발행","Full","2026-02-28","부정",null,null,"낮음"],
+["A > B 공장 확산","D","발행","Paper","2026-07-01","긍정","미요청",null,"높음"],
+["A > B 공장 확산","E","발행","Full","2026-04-30","긍정","요청","4.0k","높음"],
+["THK 상향","C","발행","Full","2026-09-30","긍정","요청","4.0k","높음"],
+["THK 상향","A","미발행",null,null,null,null,null,null],
+["THK 상향","D","발행","Paper","2026-03-01","부정","미요청",null,"낮음"],
+["THK 상향","B","발행","Full","2026-06-11","긍정","요청","7.0k","높음"],
+["THK 상향","E","발행","Paper","2026-07-01","긍정","미요청",null,"높음"],
+["TEST STEP변경","A","미발행",null,null,null,null,null,null],
+["TEST STEP변경","B","발행","Full","2026-06-11","긍정","요청","2.0k","높음"],
+["TEST STEP변경","C","발행","Paper","2026-06-11","긍정","요청","6.0k","높음"],
+["TEST STEP변경","D","발행","Full","2026-06-11","긍정","요청","9.0k","높음"],
+["TEST STEP변경","E","발행",null,"2026-06-11","부정",null,null,"낮음"]
+];
+const rows=RAW.map(r=>({chg:r[0],cust:r[1],issued:r[2]==="발행",pcn:r[3],date:r[4],react:r[5],sample:r[6],qty:r[7]?parseFloat(r[7]):0,qtyTxt:r[7],prob:r[2]==="발행"?r[8]:"미발행"}));
+const CHG=[...new Set(rows.map(r=>r.chg))], CUST=[...new Set(rows.map(r=>r.cust))].sort();
+const cls={높음:"high",낮음:"low",미발행:"none"};
+const $=id=>document.getElementById(id);
+const agg=list=>({n:list.length,issued:list.filter(r=>r.issued).length,high:list.filter(r=>r.prob==="높음").length,low:list.filter(r=>r.prob==="낮음").length,none:list.filter(r=>!r.issued).length,qty:list.reduce((a,r)=>a+r.qty,0)});
+const pct=a=>a.issued?Math.round(a.high/a.issued*100)+"%":"–";
+const fmtQ=q=>q?q.toFixed(1)+"k":"–";
+const fd=d=>d?d.slice(2).replace(/-/g,"."):"";
+
+// KPIs
+const T=agg(rows);
+$("kpis").innerHTML=[
+ ["발행 / 전체",`${T.issued} / ${T.n}`,`미발행 ${T.none}건`],
+ ["승인 가능성 높음",`${T.high}건`,`발행 건의 ${pct(T)}`],
+ ["승인 가능성 낮음",`${T.low}건`,`발행 건의 ${T.issued?Math.round(T.low/T.issued*100):0}%`],
+ ["샘플 요청 수량",fmtQ(T.qty),`요청 ${rows.filter(r=>r.sample==="요청").length}건, 모두 승인 가능성 높음`]
+].map(k=>`<div class="kpi"><div class="l">${k[0]}</div><div class="v">${k[1]}</div><div class="s">${k[2]}</div></div>`).join("");
+
+// Matrix
+function cell(r){
+  if(!r) return `<td class="cell c-none"><div class="st">해당 없음</div></td>`;
+  const c=cls[r.prob];
+  const tip=`${r.chg} / 고객 ${r.cust}: ${r.prob}${r.issued?` · PCN ${r.pcn||"na"} · 반응 ${r.react} · 샘플 ${r.sample||"na"}`:""}`;
+  if(!r.issued) return `<td class="cell c-none" title="${tip}"><div class="st">미발행</div></td>`;
+  return `<td class="cell c-${c}" title="${tip}"><div class="st">${r.prob}</div><div class="d">${r.pcn||"PCN na"} · ${fd(r.date)}</div><div class="q">${r.qty?fmtQ(r.qty):(r.sample==="미요청"?"샘플 미요청":"샘플 na")}</div></td>`;
+}
+let m=`<thead><tr><th></th>${CUST.map(c=>`<th>고객 ${c}</th>`).join("")}<th>변경점 종합</th></tr></thead><tbody>`;
+CHG.forEach(ch=>{
+  const a=agg(rows.filter(r=>r.chg===ch));
+  m+=`<tr><th class="rowh">${ch}</th>${CUST.map(c=>cell(rows.find(r=>r.chg===ch&&r.cust===c))).join("")}<td class="tot"><b>${pct(a)}</b>높음 ${a.high}/${a.issued}발행</td></tr>`;
+});
+m+=`<tr><th class="rowh">고객 종합</th>${CUST.map(c=>{const a=agg(rows.filter(r=>r.cust===c));return `<td class="tot"><b>${pct(a)}</b>높음 ${a.high}/${a.issued}발행</td>`}).join("")}<td class="tot"><b>${pct(T)}</b>전체</td></tr></tbody>`;
+$("matrix").innerHTML=m;
+
+// Bars
+function bars(el,keys,key,label){
+  $(el).innerHTML=keys.map(k=>{
+    const a=agg(rows.filter(r=>r[key]===k));
+    const seg=(n,c)=>n?`<span class="s-${c}" style="flex:${n}"></span>`:"";
+    return `<div class="brow"><div class="nm">${label(k)}</div><div class="bar" role="img" aria-label="높음 ${a.high}, 낮음 ${a.low}, 미발행 ${a.none}">${seg(a.high,"high")}${seg(a.low,"low")}${seg(a.none,"none")}</div><div class="pc">${pct(a)}</div>
+    <div class="meta">높음 ${a.high} · 낮음 ${a.low} · 미발행 ${a.none} · 샘플 ${fmtQ(a.qty)}</div></div>`;
+  }).join("");
+}
+bars("byChange",CHG,"chg",k=>k);
+bars("byCustomer",CUST,"cust",k=>"고객 "+k);
+
+// Detail table with filters
+const fs={chg:null,cust:null};
+function chips(el,label,vals,key,txt){
+  const h=[null,...vals].map(v=>`<button class="chip" data-k="${key}" data-v="${v??""}" aria-pressed="${fs[key]===v}">${v===null?"전체":txt(v)}</button>`).join("");
+  $(el).innerHTML=`<span class="lab">${label}</span>`+h;
+}
+function drawDetail(){
+  chips("fChange","변경점",CHG,"chg",v=>v);chips("fCust","고객",CUST,"cust",v=>v);
+  const list=rows.filter(r=>(!fs.chg||r.chg===fs.chg)&&(!fs.cust||r.cust===fs.cust));
+  $("count").textContent=`${list.length}건`;
+  const na=v=>v?v:`<span class="na">na</span>`;
+  $("detail").innerHTML=`<thead><tr><th>변경점</th><th>고객</th><th>발행 검토</th><th>PCN 형태</th><th>최초 발행일</th><th>고객 반응</th><th>샘플 요청</th><th class="r">요청 수량</th><th>승인 가능성</th></tr></thead><tbody>`+
+   list.map(r=>`<tr><td>${r.chg}</td><td>${r.cust}</td><td>${r.issued?"발행":"미발행"}</td><td>${na(r.pcn)}</td><td class="num">${r.date?r.date.replace(/-/g,"."):`<span class="na">na</span>`}</td><td>${na(r.react)}</td><td>${na(r.sample)}</td><td class="r num">${r.qty?r.qtyTxt:`<span class="na">na</span>`}</td><td><span class="pill p-${cls[r.prob]}">${r.prob}</span></td></tr>`).join("")+`</tbody>`;
+}
+document.addEventListener("click",e=>{
+  const b=e.target.closest("button.chip");if(!b)return;
+  fs[b.dataset.k]=b.dataset.v||null;drawDetail();
+});
+drawDetail();
+
+/* ---- 챗봇: 대시보드 데이터를 컨텍스트로 넣어 호출 ---- */
+function buildContext(){
+  const L=[];
+  L.push("[원본 데이터] 변경점|고객|발행검토|PCN형태|최초발행일|고객반응|샘플요청|요청수량|승인가능성");
+  rows.forEach(r=>L.push([r.chg,r.cust,r.issued?"발행":"미발행",r.pcn||"na",r.date||"na",r.react||"na",r.sample||"na",r.qtyTxt||"na",r.issued?r.prob:"na"].join("|")));
+  const line=(n,a)=>`${n}: 전체 ${a.n}건, 발행 ${a.issued}건, 미발행 ${a.none}건, 승인 가능성 높음 ${a.high}건, 낮음 ${a.low}건, 발행 건 중 높음 비율 ${pct(a)}, 샘플 요청 수량 합계 ${a.qty}k`;
+  L.push("\n[변경점별 집계]");CHG.forEach(c=>L.push(line(c,agg(rows.filter(r=>r.chg===c)))));
+  L.push("\n[고객별 집계]");CUST.forEach(c=>L.push(line("고객 "+c,agg(rows.filter(r=>r.cust===c)))));
+  L.push("\n[전체 집계]");L.push(line("전체",T));
+  return L.join("\n");
+}
+const SYSTEM=`너는 변경점(PCN) 승인 현황 대시보드의 데이터 분석 도우미다. 아래 데이터만 근거로 한국어로 간결하게 답한다. 데이터에 없는 내용은 추측하지 말고 "데이터에 없습니다"라고 답한다. 수치를 말할 때는 어떤 변경점·고객의 값인지 함께 밝힌다. 'na'는 해당 없음 또는 미입력이며 미발행 건은 승인 가능성이 없다. 승인 가능성 비율은 발행 건을 분모로 한다.\n\n`+buildContext();
+const store={get(k){try{return localStorage.getItem(k)||""}catch(e){return ""}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+$("cModel").value=store.get("chat.model");$("cUrl").value=store.get("chat.url");
+["cModel","cUrl"].forEach(id=>$(id).addEventListener("change",()=>store.set(id==="cModel"?"chat.model":"chat.url",$(id).value.trim())));
+$("cfgToggle").addEventListener("click",()=>{const f=$("cfg");f.hidden=!f.hidden;$("cfgToggle").setAttribute("aria-expanded",String(!f.hidden))});
+$("cfg").addEventListener("submit",e=>e.preventDefault());
+const hist=[];
+function addMsg(cls,text){const d=document.createElement("div");d.className="m "+cls;d.textContent=text;$("msgs").appendChild(d);$("msgs").scrollTop=1e9;return d}
+function endpoint(u){u=u.trim().replace(/\/+$/,"");return /\/chat\/completions$/.test(u)?u:u+"/chat/completions"}
+let busy=false;
+async function ask(text){
+  text=text.trim();if(!text||busy)return;
+  const model=$("cModel").value.trim(),url=$("cUrl").value.trim(),key=$("cKey").value.trim();
+  addMsg("u",text);$("q").value="";
+  if(!model||!url||!key){addMsg("e","model_name, base_url, api_key를 모두 입력해 주세요.");$("cfg").hidden=false;return}
+  busy=true;$("send").disabled=true;
+  const pending=addMsg("a","답변을 생성하는 중…");
+  hist.push({role:"user",content:text});
+  try{
+    const res=await fetch(endpoint(url),{method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+key},
+      body:JSON.stringify({model,messages:[{role:"system",content:SYSTEM},...hist.slice(-12)]})});
+    const raw=await res.text();let j=null;try{j=JSON.parse(raw)}catch(e){}
+    if(!res.ok)throw new Error(`HTTP ${res.status}: ${(j&&(j.error&&j.error.message||j.message))||raw.slice(0,200)}`);
+    const ans=j&&j.choices&&j.choices[0]&&j.choices[0].message&&j.choices[0].message.content;
+    if(!ans)throw new Error("응답에서 답변 텍스트를 찾지 못했습니다: "+raw.slice(0,200));
+    pending.textContent=ans.trim();hist.push({role:"assistant",content:ans});
+  }catch(err){
+    hist.pop();pending.className="m e";
+    pending.textContent=(err instanceof TypeError)?"서버에 연결하지 못했습니다. base_url이 맞는지, 해당 서버가 이 페이지에서의 요청(CORS)을 허용하는지 확인해 주세요. 게시된 Artifact 페이지에서는 외부 서버 호출이 차단됩니다.":"오류: "+err.message;
+  }finally{busy=false;$("send").disabled=false;$("msgs").scrollTop=1e9}
+}
+$("send").addEventListener("click",()=>ask($("q").value));
+$("q").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey&&!e.isComposing){e.preventDefault();ask($("q").value)}});
+addMsg("a","이 대시보드의 데이터를 근거로 답합니다. 위에서 모델 설정을 입력한 뒤 질문해 보세요.\n예: 승인 가능성이 낮은 건은? / 샘플 수량이 가장 큰 변경점은?");
+const sg=document.createElement("div");sg.className="sugg";
+["승인 가능성이 낮은 건은 어디야?","고객별로 승인 가능성을 요약해줘","샘플 수량이 가장 큰 변경점은?"].forEach(t=>{const b=document.createElement("button");b.className="chip";b.type="button";b.textContent=t;b.addEventListener("click",()=>ask(t));sg.appendChild(b)});
+$("msgs").appendChild(sg);
+</script>
+</body></html>
